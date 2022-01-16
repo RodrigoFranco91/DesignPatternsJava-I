@@ -1,0 +1,204 @@
+Neste capítulo falamos sobre o Padrão Command:
+
+ 
+- Para colocar em prática esse Padrão vamos criar mais uma funcionalidade em nosso projeto Loja. Agora através de um Orçamento criado será possível criar um
+Pedido e quando se cria um Pedido haverá duas operações a serem feitas: salvar o pedido no banco de dados e enviar um e-mail para o cliente dono do pedido.
+
+
+- O padrão Command visa extrair os comandos (operações)  para um só lugar (Classe). Veja o passo a passo a seguir que vamos entender melhor.
+
+
+- Siga o passo a passo para resolver o problema SEM o uso do Padrão Command:
+
+	1) Criar a classe Pedido no pacote be.com.alura.loja.pedido. Essa classe é o que representa um Pedido:
+
+		public class Pedido {
+
+			private String cliente;
+			private LocalDateTime data;
+			private Orcamento orcamento;
+
+			//Criar Getters e um construtor com os parametros.
+		}
+
+	Tratamos o cliente como String, mas na vida real seria outra classe...	
+
+	2) Crie a clase TestesPedidos, essa deve ter o método Main(). Dentro desse método vamos criar um orcamento para depois poder criar um Pedido. 
+	Veja como ficou:
+	
+		public class TestePedidos {
+
+	
+			public static void main(String[] args) {
+				Orcamento orcamento = new Orcamento(new BigDecimal("600"), 4);
+		
+				String cliente = "Rodrigo Franco";
+				LocalDateTime data = LocalDateTime.now();
+				Pedido pedido = new Pedido(cliente, data, orcamento);
+		
+			}
+		}	
+
+	3) Agora vamos criar as operações necessárias após criar um Pedido, no caso será salvar esse pedido e enviar e-mail a um cliente. Vamos simular
+	essas operações com o Print na tela. Veja:
+
+		public class TestePedidos {
+
+	
+			public static void main(String[] args) {
+				Orcamento orcamento = new Orcamento(new BigDecimal("600"), 4);
+		
+				String cliente = "Rodrigo Franco";
+				LocalDateTime data = LocalDateTime.now();
+				Pedido pedido = new Pedido(cliente, data, orcamento);
+		
+				//Ações:
+				System.out.println("Salvando Pedido no banco de dados");
+				System.out.println("Enviando email ao cliente.");
+			}
+		}
+
+	4) Agora vamos refletir o problema dessa solução sem uso do Padrão: Veja que no mesmo local onde é extraido as informções do Cliente, da Data e
+	do Pedido é onde está o código das operações (ações), ou seja, se amanhã nosso projeto estiver recebendo os dados de Cliente, Data e Orcamento
+	atraves de um requisição Web, ou seja, na classe Controller, teremos que criar nessa outra classe o mesmo trecho de operações (ações). Resumindo,
+	em todo trecho que se cria um Pedido haverá o trecho de operações (ações), ou seja, haverá código repetido e o Padrão Command visa eliminar essa 
+	repeticão.
+
+
+- Tenha em mente que esse padrão é o que mais gera confusão, pois quando ele foi escrito a WEB estava começando e hoje há outras maneiras de extrair os
+dados para se criar um objeto. E por isso existe uma outra maneira de colocar em prática esse padrão e quando isso ocorre o chamamos de Command Handlers.
+
+
+- Quando implementamos o Command Handlers há uma quebra do paradigma Orientado a Objetos, pois separamos o Estado do Objeto do seu Comportamento, ou seja,
+separamos os atributos dos métodos, mas isso as vezes se faz necessário.
+
+
+- Resolvendo o problema proposto, usando apenas o Command:
+
+
+	1) Vamos criar a classe GeraPedido, esta deve ficar no pacote br.com.alura.loja.pedido. Nesta classe precisamos dos dados (atributos) para gerar
+	o pedido. Veja como ficou a classe:
+
+		public class GeraPedido {
+	
+			private String nome;
+			private BigDecimal valor;
+			private int quantidadeItens;
+	
+			public GeraPedido(String nome, BigDecimal valor, int quantidadeItens) {
+				this.nome = nome;
+				this.valor = valor;
+				this.quantidadeItens = quantidadeItens;
+			}
+	
+			public void executa() {
+		
+				Orcamento orcamento = new Orcamento(this.valor, this.quantidadeItens);
+				String cliente = "Rodrigo Franco";
+				Pedido pedido = new Pedido(cliente, LocalDateTime.now(), orcamento);
+		
+				//Ações:
+				System.out.println("Salvando Pedido no banco de dados");
+				System.out.println("Enviando email ao cliente.");
+		
+			}
+
+		}
+
+	Ou seja, agora para criar um pedido/orcamento basta passar os valores para essa classe e chamar o metodo executa, desta forma o pedido é feito e as
+	ações são executadas.
+
+	2) A classe TestePedidos, ou seja, a classe que tem o método main ficará assim:
+
+		public class TestePedidos {
+	
+			public static void main(String[] args) {
+
+				//Simulando pegando os dados, pode ser via web, desktop, linha comando
+				String cliente = "Rodrigo";
+				BigDecimal valor = new BigDecimal(100);
+				int quantidade = 5;
+		
+				GeraPedido geradorPedido = new GeraPedido(cliente, valor, quantidade);
+				geradorPedido.executa();
+		
+			}
+		}
+
+	Hoje estamos pegando o valor simulando desktop, se amanha for via web, basta trocar as 3 primeiras linha e depois chamar o GeraPedido.
+
+	É comum que nossa classe GeraPedido implementasse uma interface, por exemplo Command e nessa interface Command teriamos a assinatura do método
+	executa(). Com isso é possível ter uma classe que gerencia todos os comandos, ou seja, toda classe que implementa Command.
+
+
+- Resolvendo o problema proposto, usando apenas o Command Handllers:
+
+	1) Seu intuito é separar os dados da ação, veja a classe GeraPedido, nela há os dados (atributos) e a ação que é o método executa(). E na vida real
+	essa classe teria ainda mais dados, pois se o método executa() tem que salvar e enviar o e-mail a classe GeraPedido teria que receber no seu
+	construtor um PedidoRepository, EmailService, etc.. Ou seja, teríamos muitos dados (atributos) e a ação.
+
+	2) No pacote pedido vamos criar a classe GeraPedidoHandler e no seu construtor vamos receber as dependencias necessárias para as açcões (repository, 	service). Depois vamos criar ainda nessa classe o método execute() que será a ação em sí. Veja como ficará:
+
+		public class GeraPedidoHandler {
+	
+			//Receber no seu construtor (injeção de dependencias) o repository, service, etc, 
+			// para executar as ações.
+	
+			public void execute(GeraPedido2 dados) {
+		
+				Orcamento orcamento = new Orcamento(dados.getValor(), dados.getQuantidadeItens());
+				Pedido pedido = new Pedido(dados.getNome(), LocalDateTime.now(), orcamento);
+		
+				//Ações:
+				System.out.println("Salvando Pedido no banco de dados");
+				System.out.println("Enviando email ao cliente.");
+		
+			}
+
+		}
+
+	3) Já temos a classe para ação, vamos agora criar a classe de Dados, no caso será a classe GeraPedido2. Veja que na ação, ou seja, no metodo 	execute() fazemos o uso da classe de dados. A classe terá apenas os dados, veja:
+
+		public class GeraPedido2 {
+
+			private String nome;
+			private BigDecimal valor;
+			private int quantidadeItens;
+
+			public GeraPedido2(String nome, BigDecimal valor, int quantidadeItens) {
+				this.nome = nome;
+				this.valor = valor;
+				this.quantidadeItens = quantidadeItens;
+			}
+
+			public String getNome() {
+				return nome;
+			}
+
+			public BigDecimal getValor() {
+				return valor;
+			}
+
+			public int getQuantidadeItens() {
+				return quantidadeItens;
+			}
+
+		}
+
+	4) Agora na classe de teste, que vamos chamar de TestePedidos2, teriamos:
+
+		public class TestePedidos2 {
+	
+			public static void main(String[] args) {
+
+				//Simulando pegando os dados, pode ser via web, desktop, linha comando
+				String cliente = "Rodrigo";
+				BigDecimal valor = new BigDecimal(100);
+				int quantidade = 5;
+		
+				GeraPedido2 dados = new GeraPedido2(cliente, valor, quantidade);
+				GeraPedidoHandler acao = new GeraPedidoHandler(/*Enviaria as dependencias*/);
+				acao.execute(dados);
+		
+			}
+		}

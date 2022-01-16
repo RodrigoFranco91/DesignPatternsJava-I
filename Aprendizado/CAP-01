@@ -1,0 +1,116 @@
+Neste capítulo falamos sobre o que é Design Patterns e sobre o Strategy:
+
+
+- O que é Design Patterns? É a solução comum para um problema recorrente ao utilizar a Orientação a Objetos. Com o Design Partterns
+não precisamos ficar "reinventando a roda". Esse termo ficou popular ao surgir o livro Design Pattern que foi escrito pela Guange dos
+4 (GOF).
+
+
+- Há três categorias de Desigfn Patterns: Criacionais (como criar objetos), Estruturais e Comportamentais. Nesse curso I vamos estudar
+apenas do tipo Comportamentais.
+
+
+- Tenha em mente Strategy visa eliminar os diversos IF's ou Switch Case de nosso código. No caso é quando temos uma ação a ser 
+feita, mas que há uma varição dessa ação dependendo do valor de um atributo, ou seja, o algoritmo muda de acordo com o valor de um 
+atributo ou argumento.
+
+
+- Para exemplificar o uso do Design Pattern Strategy vamos criar o projeto Loja, nele haverá a classe Orcamento para de fato 
+representar um orcamento, tenha em mente que em um orcamento temos apenas seu valor e em cima desse valor vamos aplicar impostos.
+Para isso siga o passo a passo:
+
+	1) Criar o projeto Java loja;
+	
+	2) Criar a classe Orcamento na pasta br.com.alura.loja.orcamento. Essa classe ficará assim:
+	
+		public class Orcamento {
+			
+			private BigDecimal valor;
+			
+			public Orcamento(BigDecimal valor) {
+				this.valor = valor;
+			}
+			
+			public BigDecimal getValor() {
+				return valor;
+			}
+
+		}
+		
+	3) Criar a classe que vai caluclar um imposto, no caso essa classe se chamará CalculadoraDeImposto. Essa classe precisa ter
+	o método calcular():
+
+		public class CalculadoraDeImposto {
+
+			public BigDecimal calcular(Orcamento orcamento) {
+				
+				return orcamento.getValor().multiply(new BigDecimal("0.1"));
+			}
+			
+		}
+	
+	Só que vamos ter vários tipos de impostos (ISS, ICMS, entre outros) e cada tipo tem uma aliquota. O que podemos fazer nessa
+	caso? Podemos receber no método calculara() mais um argumento, no caso uma String que define o tipo de imposto, ou então
+	receber um ENUM que define qual tipo de imposto calcular, o grande problema que nessa duas formas teremos que cirar diversos
+	IF's, para descobrir qual imposto aplicar e só depois disso fazer o calculo e isso dificulta manter e evoluir esse código.
+	
+	O Strategy define que devemos depender de uma Interface, então vamos pegar cada tipo de imposto existente e isolar em uma 
+	classe e toda classe de imposto vai implementar a mesma interface. Dessa forma o método calcular() da classe 
+	CalculadoraDeImposto deve ficar assim:
+	
+		public class CalculadoraDeImposto {
+
+			public BigDecimal calcular(Orcamento orcamento, Imposto imposto) {
+				return imposto.calcular(orcamento);
+			}
+			
+		}
+		
+	Veja que o segundo argumento do método anterior é do tipo Imposto, que no caso será nossa interface.
+	
+	4) Criar a interface Imposto:
+	
+		public interface Imposto {
+
+			public BigDecimal calcular(Orcamento orcamento);
+		}
+		
+	5) Criar as classes que de fato representam os impostos e que tenham suas implementações, no caso será a classe ICMS e ISS:
+	
+		public class ICMS implements Imposto{
+
+			public BigDecimal calcular(Orcamento orcamento) {
+				
+				return orcamento.getValor().multiply(new BigDecimal("0.06"));
+			}
+			
+		}
+		
+		public class ISS implements Imposto {
+
+			public BigDecimal calcular(Orcamento orcamento) {
+				
+				return orcamento.getValor().multiply(new BigDecimal("0.1"));
+			}
+			
+		}
+		
+	6) Criar uma classe com método main() para testar o calculo. No caso criamos a classe TesteImpostos:
+	
+		public class TesteImpostos {
+
+			public static void main(String[] args) {
+				
+				Orcamento orcamento = new Orcamento(new BigDecimal("100"));
+				CalculadoraDeImposto calculadora = new CalculadoraDeImposto();
+				BigDecimal imposto = calculadora.calcular(orcamento, new ICMS());
+				System.out.println("O valor do imposto a ser pago é: " + imposto);
+			}
+		}
+		
+		
+	Tenha em mente que agora quando surigr um novo tipo de imposto não vamos precisar mexer nas implementações existentes,
+	vamos apenas ter que criar uma classe que representa esse novo imposto e fazer ela implementar a interface Imposto.
+	Dessa forma teremos mais coesão em nosso projeto e o mesmo ficará mais fácil de ser mantido e evoluido.
+	
+	

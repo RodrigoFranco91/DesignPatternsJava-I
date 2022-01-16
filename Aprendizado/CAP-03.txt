@@ -1,0 +1,69 @@
+Neste capítulo falamos sobre o Design Pattern Template Method:
+
+
+- No padrão estudado anteriormente, no caso foi o Chain of Responsibility, criamos uma classe abstrata chamada Desconto e criamos uma classe para
+representar cada desconto existente em nosso negócio e cada classe de desconto herdava (extends) a classe abstrata Desconto.
+
+
+- O padrão Template Method se resume em isolar na classe mãe a ação (a implementação) que sempre ocorrerá e deixar a parte específica para as classes
+filhas, lembra do exemplo de ler arquivos em formatos diferentes, onde teremos a classe abstrata com métodos de abrir e fehcar o arquivo, pois isso
+será feito em todos os formatos de arquivo. Já o que for esepecífico para ler arquivo .pdf ficará na classe PDF, o que for específico do arquivo .word 
+ficará na classe Word e assim por diante...
+
+
+- Esse padrão visa deixar toda parte do processo comum (genérica) na classe mãe! Ou seja, na classe mãe teremos um modelo (Template) para toda classe filha
+usar/seguir.
+
+
+- Vamos aplicar esse padrão ainda no exemplo de desconto que foi utilizado no padrão anterior. Veja que nesse cenário em todas as classes de desconto, no
+caso DescontoParaOrcamentoComMaisDeCincoItens e DescontoParaOrcamentoComValorMaiorQueQuinhentos repetimos o passo de verificar se aquele orçarmento é
+passível de desconto ou não (embora cada classe faça isso de um jeito, a ação é a mesma, é de verificar se vai ou não aplicar desconto). Essa verificação
+poderá ser isolada na classe mãe, pois está presente em toda classe fiha. Siga o passo a passo para implementar isso:
+
+	1) Na classe Desconto criar o método:
+		
+		public abstract boolean deveAplicar(Orcamento orcamento);
+
+	2) Toda classe filha de Desconto terá que implementar o método criado no passo anterior.
+	
+	Na classe DescontoParaOrcamentoComMaisDeCincoItens ficou assim:
+
+		@Override
+		public boolean deveAplicar(Orcamento orcamento) {
+			// TODO Auto-generated method stub
+			return orcamento.getQuantidadeItens() > 5;
+		}
+
+	Na classe DescontoParaOrcamentoComValorMaiorQueQuinhentos ficou assim:
+
+		@Override
+		public boolean deveAplicar(Orcamento orcamento) {
+			// TODO Auto-generated method stub
+			return orcamento.getValor().compareTo(new BigDecimal("500")) > 0;
+		}
+
+	Na classe SemDesconto ficou assim:
+
+		@Override
+		public boolean deveAplicar(Orcamento orcamento) {
+			// TODO Auto-generated method stub
+			return true;
+		}
+
+	3) Agora na classe mãe, no caso Desconto, podemos fazer a ação genérica, que no caso é verificar se deve aplicar desconto e se sim aplicar!
+	Para isso renomeamos o método calcular() para efetuarCalculo() e o sua visibilidade alteramos para protected e ainda continua sendo Abstract, esse
+	método ainda continua sendo o contrato para cada classe filha aplicar seu desconto específico.
+	
+	4) Na classe mãe, no caso Desconto criamos um método concreto, chamado calcular(). Agora sim vamos deixar as etapas genéricas na classe mãe. Veja
+	como ficou:
+
+		public BigDecimal calcular(Orcamento orcamento) {
+			if (deveAplicar(orcamento)) {
+				return efetuarCalculo(orcamento);
+			} 
+			return proximo.calcular(orcamento);
+		}
+
+	Desse jeito, ficou na classe mãe as ações de verificar se deve aplicar um desconto, se sim aplica, caso contrário chama o próximo desconto...
+
+	5) No metodo efetuarCalculo() nas classes filhas, não precisam mais ter o retorno que chama o próximo desconto...

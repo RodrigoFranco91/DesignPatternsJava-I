@@ -1,0 +1,186 @@
+Neste capítulo falamos sobre o Design Pattern Chain of Responsibility.
+
+
+- Esse Desing Pattern também é aplicado em cenários em que usamos muitos IF's, ou seja, no mesmo cenário que aplicamos o Design
+Pattern Strategy. Então como vamos saber quando usar o Chain of Responsibility? Simples, aplicamos o Strategy quando sabemos qual
+ação será feita, naquele exemplo sabiamos quando deveriamos aplicar o imposto ICMS, o ISS e assim por diante. Devemos usar o 
+Chain of Responsibility quando temos várias ações disponíoveis a serem tomadas, mas não temos a certeza de qual ação será tomada, ou
+seja, terá que ter uma verificação de cenário para a ação ocorrer. Tenha em mente que apenas uma ação será executada com esse
+Desing Pattern.
+
+
+- Tenha em mente que com Chain of Responsibility uma ação quando não é aplicada é a responsável por já chamar a outra ação, ou seja,
+é uma corrente e por isso tem o nome de Chain. Cada ação será uma classe (objeto). Já quando uma ação é executada não haverá chamada
+para as próximas (exemplo real é ligar para reparo de internet, onde vamos falar com robo, caso não resolva chamamos o tecnico, caso
+não resolva ele chama o tecnico avançado, etc...)
+
+
+- Para exemplificar esse padrão vamos criar a funcionalidade de Calcular Desconto no nosso projeto Loja. Siga o passo a passo:
+
+	1) O desconto será baseado através da quantidade de itens no orçamento. Então na classe Orcamento vamos criar o atributo
+	int quantidadeDeItens.
+	
+	2) Criar a classe CalculdadoraDeDescontos no pacote br.com.alura.loja.desconto. Nessa classe criar o metodo calcular(), esse
+	será o metodo que calcula o desconto. Veja como ficará:
+	
+		public class CalculadoraDeDescontos {
+			
+			public BigDecimal calcular(Orcamento orcamento) {
+				if (orcamento.getQuantidadeItens() > 5) {
+					return orcamento.getValor().multiply(new BigDecimal("0.1"));
+				}
+				
+				return BigDecimal.ZERO;
+			}
+
+		}
+		
+	3) Criar uma classe com metodo main() para testar nosso calculo de desconto. Vamos criar a classe TestesDescontos. Veja:
+
+		public class TestesDescontos {
+
+			public static void main(String[] args) {
+				
+				Orcamento orcamento = new Orcamento(new BigDecimal("200"), 6);
+				CalculadoraDeDescontos calculadora = new CalculadoraDeDescontos();
+				BigDecimal imposto = calculadora.calcular(orcamento);
+				System.out.println("O valor do desconto é de: " + imposto);
+			}
+		}
+		
+	4) Tudo funcionando perfeitamente. Agora surge um nova regra de negócio, onde se o valor do orçamento for maior que 500 deve
+	ocorrer um desconto de 10%. Como fazer isso? Podemos ir na classe CalculadoraDeDescontos, no metodo calcular() e adicionar 
+	mais um IF. Mas resolver dessa forma não é uma boa, pois toda nova regra de desconto vamos ter que criar um novo iF. Vá para
+	o próximo passo.
+	
+	5) Aplicar o Strategy aqui não é possível, pois não sabemos qual desconto aplicar sem fazer a analise de valor e quantidade 
+	de itens. Vamos melhorar isso com o padrão Chain of Responsibility. Nesse padrão vamos criar a classe abstrata Desconto e 
+	essa classe terá o método calcular() que também será abstrato, terá também um atributo do mesmo tipo de sua classe, pois ele
+	que vai ficar chamando as próximas ações, neste caso os próximos descontos...
+	
+	Temos também que fazer o construtor dessa classe!
+	
+		public abstract class Desconto {
+			
+			//É responsável por chamar a próxima ação (Desconto)
+			protected Desconto proximo;
+			
+			public Desconto(Desconto proximo) {
+				this.proximo = proximo;
+			}
+
+			public abstract BigDecimal calcular(Orcamento orcamento);
+			
+		}
+	
+	6) Cada tipo de Desconto será isolado em uma classe, logo vamos criar a classe DescontoParaOrcamentoComMaisDeCincoItens
+	e a classe DescontoParaOrcamentoComValorMaiorQueQuinhentos. Veja:
+	
+		public class DescontoParaOrcamentoComMaisDeCincoItens {
+
+			public BigDecimal calcular(Orcamento orcamento) {
+				if (orcamento.getQuantidadeItens() > 5) {
+					return orcamento.getValor().multiply(new BigDecimal("0.1"));
+				}
+
+				return BigDecimal.ZERO;
+			}
+		}
+		
+		public class DescontoParaOrcamentoComValorMaiorQueQuinhentos {
+
+			public BigDecimal calcular(Orcamento orcamento) {
+				if (orcamento.getValor().compareTo(new BigDecimal("500")) > 0) {
+					return orcamento.getValor().multiply(new BigDecimal("0.05"));
+				}
+
+				return BigDecimal.ZERO;
+			}
+		}	
+		
+	7) As classes DescontoParaOrcamentoComMaisDeCincoItens e DescontoParaOrcamentoComValorMaiorQueQuinhentos devem herdar da 
+	classe Desconto. Teremos que herdar o construtor da classe mãe.
+	
+	8) Agora no lugar de retornar Zero quando não se aplica o desconto (estamos falando no metodo calcular() de cada classe de
+	desconto), vamos chamar a próxima ação, no caso o próximo desconto e por esse motivo temos que criar uma classe que 
+	representa o desconto Zero, pois esse será a última ação. A classe que termina esse encadeamento se chamara SemDesconto:
+	
+		public class SemDesconto extends Desconto {
+
+			public SemDesconto() {
+				super(null);
+				// TODO Auto-generated constructor stub
+			}
+
+			public BigDecimal calcular(Orcamento orcamento) {
+
+				return BigDecimal.ZERO;
+			}
+		}
+		
+	Nesse aqui tivemos que sobrescrever seu construtor, pois ele é o último elo da corrente!
+		
+	9) Agora de fato podemos alterar o o retorno BigDecimal.ZERO para chamar a próxima ação, ficando assim as classes:
+	
+		public class DescontoParaOrcamentoComMaisDeCincoItens extends Desconto{
+
+			public DescontoParaOrcamentoComMaisDeCincoItens(Desconto proximo) {
+				super(proximo);
+				// TODO Auto-generated constructor stub
+			}
+
+			public BigDecimal calcular(Orcamento orcamento) {
+				if (orcamento.getQuantidadeItens() > 5) {
+					return orcamento.getValor().multiply(new BigDecimal("0.1"));
+				}
+
+				return proximo.calcular(orcamento);
+			}
+		}
+		
+		public class DescontoParaOrcamentoComValorMaiorQueQuinhentos extends Desconto {
+
+			public DescontoParaOrcamentoComValorMaiorQueQuinhentos(Desconto proximo) {
+				super(proximo);
+				// TODO Auto-generated constructor stub
+			}
+
+			public BigDecimal calcular(Orcamento orcamento) {
+				if (orcamento.getValor().compareTo(new BigDecimal("500")) > 0) {
+					return orcamento.getValor().multiply(new BigDecimal("0.05"));
+				}
+
+				return proximo.calcular(orcamento);
+			}
+		}
+		
+	Isso funciona, pois o atributo proximo é do tipo Desconto e toda classe que aplica desconto é filha de Desconto.
+	
+	10) Agora temos que alterar a classe CalculdadoraDeDescontos, pois nela teremos que configurar todo o fluxo de ações.
+	Vamos no caso encadeando ações!
+	Veja como ficou:
+	
+		public class CalculadoraDeDescontos {
+			
+			public BigDecimal calcular(Orcamento orcamento) {
+
+			//Aqui é onde configuramos a ordem de chamada das ações, a primeira será a tentativa
+			// de dar o desconto por ter mais de 5 itens no orçamento, a segunda será o desconto
+			// por valor ser maior que 500 e por fim finaliza sem dar desconto...
+			//Tenha em mente que apenas um desconto (ação) é executado, se executar o fluxo será
+			// interrompido.
+			Desconto desconto = new DescontoParaOrcamentoComMaisDeCincoItens(
+					new DescontoParaOrcamentoComValorMaiorQueQuinhentos(
+							new SemDesconto()));
+			
+			return desconto.calcular(orcamento);
+			
+			}
+			
+		}
+		
+	11) Para testar, basta executar o main() da classe TestesDescontos.
+	
+	12) Agora se surgir um um novo desconto, basta criar uma classe que terá a implementação desse novo desconto e essa classe
+	tem que ser filha de Desconto! Feito a classe basta adicionar sua instancia no encadeamento na classe 
+	CalculadoraDeDescontos()...

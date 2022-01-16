@@ -1,0 +1,127 @@
+Neste capítulo falamos sobre o Padrão State:
+
+
+- Esse padrão visa também eliminar os IF's de nosso código, ou seja, muito parecido com o padrão Strategy. Pode ser usado para mudar o estado do objeto,
+por exemplo mudar o status de um pedido. É usado também quando queremos aplicar uma regra de négocio/algoritmo de acordo com o estado do objeto.
+
+
+- Para exemplificar esse padrão, vamos criar mais uma regra no nosso projeto Loja. Agora será possível dar um desconto extra (especial), mas esse desconto
+dependerá do Status (situação) que o orçamento se encontra, pois ele pode estar em analise, concluido, aprovado e reprovado. 
+Ainda não temos o status do orçamento, então teremos que criar um atributo que guarde seu estado e alem disso criar métodos que faça a mudança de estado 
+do orçamento. Essa mudaça terá regras, pois há uma ordem para o status evoluir. Será nesse cenário que vamos aplicar o padrão State.
+
+
+- Sem aplicar esse padrão poderiamos resolver da seguinte forma: criar na classe Orcamento o metodo aplicarDescontoExtra() e dentro desse método aplicar o 
+desconto, só que como depende do status do orçamento vamos ter que encher de IF's. Tabém teriamos que criar um método para cada status existente, por 
+exemplo o metodo aprovar() onde ele aplica o status Aprovado no orçamento, só que em cada método haverá támbem diversos IF's, pois há uma ordem de status
+que deve ser seguida...
+
+
+-Siga o passo a passo para aplicar o padrão State:
+
+	1) Criar na classe Orcamento o atributo situacao do tipo SituacaoOrcamento, Ainda não temos uma classe SituacaoOrcamento, logo teremos um erro 
+	nesse trecho, mas não se preocupe, vamos criá-la. A classe Situacao será uma classe abstrata, onde as classes que representam o Status/Situacao 
+	vão herdar.
+
+	Usaremos a classe SituacaoOrcamento, (como tipo) para podermos usar o Polimorfismo, pois vamos tratar EmAnalise, Reprovado, Aprovado e Finalizado 
+	como se fossem Sistuacao, alem disso tudo que for comum para todos Status vamos deixar na classe mãe SituacaoOrcamento.
+
+	2) Criar dentro do pacote orcamento o pacote situacao. Será nesse pacote que teremos as classes que representam o Status/Situacao, ou seja
+	teremos aqui as classes: EmAnalise, Reprovado, Aprovado, Finalizado, etc...
+
+	3) Criar a classe Abstrata SituacaoOrcamento, vamos criar no pacote Situacao. Tenha em mente que quando tentarmos mudar o status fora da ordem
+	correta, por exemplo, colocar em Aprovado um orcamento que já foi Finalizado o correto é ocorrer uma Excpetion. Outra coisa que temos que ter 
+	em mente é que em cada Status poderá haver um valor de desconto. Ou seja, temos certeza que todo Status poderá lançar Excpetion e aplicar um
+	desconto, por isso vamos criar na classe SituacaoOrcamento tudo que os filhos podem ter, ou seja, teremos um metodo para calcular o desconto
+	e um metodo para colocar o status nos estados de: EmAnalise, Reprovado, Aprovado e Finalizado. Depois cada filho irá sobrescrever o metodo que
+	lhe faz sentido (que se aplica de acordo com a regra de negocio). Veja como ficou:
+
+		public abstract class SituacaoOrcamento {
+	
+			public BigDecimal calcularValorDescontoExtra(Orcamento orcamento) {
+				return BigDecimal.ZERO;
+			}
+	
+			public void aprovar(Orcamento orcamento) {
+				throw new DomainException("Orcamento não pode ser aprovado");
+			}
+	
+			public void reprovar(Orcamento orcamento) {
+				throw new DomainException("Orcamento não pode ser reprovado");
+			}
+	
+			public void finalizar(Orcamento orcamento) {
+				throw new DomainException("Orcamento não pode ser finalizado");
+			}
+	
+		}
+
+	Veja que todo método que altera o status retorna Excpetion e o metodo de desconto retorna 0, pois será a classe Filha que vai fazer a implementação
+	específica.
+
+	4) Criar a classe DomainException, pode ser criada no pacote exception. Esse será a exception lançada quando tentarmos mudar o status de um
+	orcamento de forma incorreta. Veja como ficou:
+
+		public class DomainException extends RuntimeException{
+
+			private static final long serialVersionUID = 1L;
+	
+			public DomainException(String mensagem) {
+				super(mensagem);
+			}
+	
+		}
+
+	5) Fazer as classes filhas, no caso EmAnalise, Reprovado, Aprovado, Finalizado serem filhas de SituacaoOrcameto e cada filha irá sobrescrever os
+	métodos que faz sentido.
+
+	Um orçamento em status Finalizado não tem desconto e nem pode mais mudar de stauts, logo sua classe não terá nenhum metodo:
+
+		public class Finalizado extends SituacaoOrcamento {
+	
+		}
+
+	Um orçamento no status EmAnalise pode ser aprovado, reprovado e tem descontoi de 5%, logo ficará assim:
+
+		public class EmAnalise extends SituacaoOrcamento{
+	
+			@Override
+			public BigDecimal calcularValorDescontoExtra(Orcamento orcamento) {
+				return orcamento.getValor().multiply(new BigDecimal("0.05"));
+			}
+	
+			@Override
+			public void aprovar(Orcamento orcamento) {
+				orcamento.setSituacao(new Aprovado());
+			}
+	
+			@Override
+			public void reprovar(Orcamento orcamento) {
+				orcamento.setSituacao(new Reprovado());
+			}
+
+		}
+	
+	E assim por diante...
+
+	6) Na classe Orcamento, colocar no seu construtor o status EmAnalise, ou seja, todo Orcamento criado já começa nesse status
+
+	7) Na classe Orcamento criar os metodos para aplicar desconto extra, aprovar, reprovar e finalizar um orcamento. Veja como ficaram:
+
+			public void aplicarDescontoExtra() {
+				BigDecimal valorDesconto = this.situacao.calcularValorDescontoExtra(this);
+				this.valor.subtract(valorDesconto);
+			}
+	
+			public void aprovar() {
+				this.situacao.aprovar(this);
+			}
+	
+			public void reprovar() {
+				this.situacao.reprovar(this);
+			}
+	
+			public void finalizar() {
+				this.situacao.finalizar(this);
+			}
+	

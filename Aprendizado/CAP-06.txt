@@ -1,0 +1,138 @@
+Neste capítulo falamos sobre o Padrão Observer:
+
+
+- Para aplicar o padrão Observer vamos continar com o contexto do capítulo anterior, ou seja, vamos trabalhar com a classe GeraPedidoHandler. Lembra que
+ess classe receberia via injeção de dependencias as classes de ações? Por exemplo, esse classe receberia um PedidoRepository e EmailService para poder
+fazer suas ações. Como não estamos usando o Spring vamos simular o que está acontecendo:
+
+	1) No pacote br.com.alura.loja.pedido.acao vamos criar as classes EnviarEmailPedido e SalvarPedido. Veja como ficou as duas classes:
+
+		public class EnviarEmailPedido {
+
+			public void execute(Pedido pedido) {
+				System.out.println("Enviando email");
+			}
+		}
+	
+	e
+
+		public class SalvarPedido {
+
+			public void execute(Pedido pedido) {
+				System.out.println("Salvando Pedido");
+			}
+		}
+
+	2) Agora na classe GeraPedidoHandler ficaria assim:
+
+		public class GeraPedidoHandler {
+		
+			//Receber no seu construtor (injeção de dependencias) o repository, service, etc, 
+			// para executar as ações.
+	
+			public void execute(GeraPedido2 dados) {
+		
+				Orcamento orcamento = new Orcamento(dados.getValor(), dados.getQuantidadeItens());
+				Pedido pedido = new Pedido(dados.getNome(), LocalDateTime.now(), orcamento);
+		
+				//Ações - Estamos desconsiderante a Injeção de Dependencias, pois estamos sem Spring neste exemplo:
+				EnviarEmailPedido email = new EnviarEmailPedido();
+				SalvarPedido dao = new SalvarPedido();
+		
+				email.execute(pedido);
+				dao.execute(pedido);
+		
+			}
+
+		}
+
+
+- O problema que temos do jeito que está é que mesmo se tivessemos injeção de depdendencias a nossa classe fica muito dependente de outra, já pensou se
+amanhã eu resolvo fazer a NF do pedido, enviar um SMS pro cliente após salvar o pedido, ou seja, cada ação que surge nova é uma dependencia a mais para essa
+classe. Vamos resolver isso com o Padrão Observer.
+
+
+- Aplicando o Padrão Observer:
+
+	1) Veja que toda ação que temos (Salvar Pedido e Enviar Email) tem o método execute() que recebe um  Pedido, então podemos aplicar o Polimorfismo,
+	vamos criar no pacote acao a interface AcaoAposGerarPedido, veja como ficou:
+
+		public interface AcaoAposGerarPedido {
+	
+			public void executarAcao(Pedido pedido);
+
+		}
+
+	2) Agora toda classe que faz uma ação, no caso EnviarEmailPedido e SalvarPedido devem implmenetar a interface AcaoAposGerarPedido. Vamos apagar o 
+	método que essas classes já tinham e implementar a mesma coisa, só que agora usando o método da interface. Veja como ficaram: 
+
+		public class EnviarEmailPedido implements AcaoAposGerarPedido  {
+
+			public void executarAcao(Pedido pedido) {
+				System.out.println("Enviando email");
+			}
+		}	
+
+	e
+
+		public class SalvarPedido implements AcaoAposGerarPedido  {
+
+			public void executarAcao(Pedido pedido) {
+				System.out.println("Salvando Pedido");
+			}
+		}
+
+	3) Agora na classe GeraPedidoHandler vamos parar de ficar chamando cada ação (seja via injeção de independencia ou criando o objeto). Vamos criar um
+	atributo List<AcaoAposGerarPedido> e rodar todas ações. Veja como ficou:
+
+		public class GeraPedidoHandler {
+	
+			private List<AcaoAposGerarPedido> acoes;
+		
+			public GeraPedidoHandler(List<AcaoAposGerarPedido> acoes){
+				this.acoes = acoes;
+			}
+	
+			public void execute(GeraPedido2 dados) {
+		
+				Orcamento orcamento = new Orcamento(dados.getValor(), dados.getQuantidadeItens());
+				Pedido pedido = new Pedido(dados.getNome(), LocalDateTime.now(), orcamento);
+			
+				acoes.forEach(a -> {
+					a.executarAcao(pedido);
+				});
+		
+			}
+
+		}
+
+	4) Agora podemos testar. Vamos criar no pacote principal a classe TesteGeraPedidoObserver. Veja como ficou:
+
+		public class TesteGeraPedidoObserver {
+
+			public static void main(String[] args) {
+
+				// Simulando pegando os dados, pode ser via web, desktop, linha comando
+				String cliente = "Rodrigo";
+				BigDecimal valor = new BigDecimal(100);
+				int quantidade = 5;
+
+				GeraPedido2 dados = new GeraPedido2(cliente, valor, quantidade);
+
+				GeraPedidoHandler acao = new GeraPedidoHandler(Arrays.asList(
+						new EnviarEmailPedido(), 
+						new SalvarPedido())
+						);
+				acao.execute(dados);
+			}
+		}
+
+
+- Com esse Padrão a nossa classe GeraPedidoHandler não vai nunca mais mudar, ou seja, pode surgir mais N ações que ela não muda, o que vai mudar será que
+vamos passar uma lista para essa classe com mais ou menos ações. A classe EnviarEmailPedido e SalvarPedido são as classes observadores (são as classes que
+implementam a interface), ela são chamadas também de Listeners ou Ouvintes, e quando essas são chamadas uma ação é disparada. A classe GeraPedidoHandler é
+classe que dispara os eventos. Esse padrão faz a famosa Inversão de Controle!
+
+
+	
+
